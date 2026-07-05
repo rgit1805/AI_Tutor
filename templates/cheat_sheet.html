@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Cheat Sheet - {{ student_name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #f4f6f9;
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #3a7bd5;
+            padding-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            color: #3a7bd5;
+            font-size: 2.2rem;
+        }
+        .header p {
+            margin: 5px 0 0;
+            color: #666;
+        }
+        .print-btn {
+            display: block;
+            margin: 0 auto 30px;
+            background: linear-gradient(135deg, #3a7bd5, #00d2ff);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+        }
+        .print-btn:hover {
+            opacity: 0.9;
+        }
+        
+        /* Markdown Rendering Styles */
+        .content h1, .content h2, .content h3 {
+            color: #2c3e50;
+            margin-top: 25px;
+        }
+        .content ul, .content ol {
+            padding-left: 20px;
+        }
+        .content li {
+            margin-bottom: 8px;
+        }
+        .content strong {
+            color: #3a7bd5;
+        }
+        .content code {
+            background-color: #f0f2f5;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+            color: #e83e8c;
+        }
+
+        /* Print formatting */
+        @media print {
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; padding: 0; }
+            .print-btn { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+
+    <div class="container">
+        <div class="header">
+            <h1>Study Cheat Sheet</h1>
+            <p>Generated automatically from the tutoring sessions of <strong>{{ student_name }}</strong></p>
+        </div>
+        
+        <div class="content" id="markdownContent"></div>
+        <div style="display:none;" id="rawMarkdown">{{ content }}</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const raw = document.getElementById('rawMarkdown').innerText;
+            if (raw) {
+                document.getElementById('markdownContent').innerHTML = marked.parse(raw);
+            }
+        });
+    </script>
+</body>
+</html>

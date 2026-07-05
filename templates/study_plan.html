@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Tutor - Study Plan Generator</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        .study-container {
+            display: flex;
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .form-section {
+            flex: 1;
+        }
+        .history-section {
+            flex: 1;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .plan-result {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            display: none;
+        }
+        .plan-result h3 { margin-top: 0; }
+        .history-item {
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: border 0.3s ease;
+        }
+        .history-item:hover {
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 1rem 0;
+            font-style: italic;
+        }
+        .plan-content-html {
+            line-height: 1.6;
+        }
+        .plan-content-html h1, .plan-content-html h2, .plan-content-html h3 {
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #4facfe;
+        }
+        .plan-content-html ul {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <nav id="navbar">
+        <a href="/">Dashboard</a>
+        <a href="/quiz">Start Quiz</a>
+        <a href="/chat">Chat with AI</a>
+        <a href="/study">Study Plan</a>
+        <a href="/progress">My Progress</a>
+        <a href="#" id="logoutBtn">Logout</a>
+    </nav>
+
+    <div class="container">
+        <h2>📚 AI Study Plan Generator</h2>
+        <p>Let AI build a personalized, step-by-step learning schedule for you.</p>
+
+        <div class="study-container">
+            <div class="form-section glass-card">
+                <h3>Create New Plan</h3>
+                <div style="margin-top: 1rem;">
+                    <label for="topicInput" style="display:block; margin-bottom:0.5rem;">Subject / Topic</label>
+                    <input type="text" id="topicInput" placeholder="e.g. Python for Beginners" style="width: 100%; margin-bottom: 1rem;">
+
+                    <label for="timeframeInput" style="display:block; margin-bottom:0.5rem;">Timeframe</label>
+                    <input type="text" id="timeframeInput" placeholder="e.g. 7 days, 2 weeks, 1 month" style="width: 100%; margin-bottom: 1rem;">
+
+                    <button id="generatePlanBtn" style="width: 100%;">Generate Plan ✨</button>
+                    <div id="loadingIndicator" class="loading">Generating your personalized plan... please wait.</div>
+                </div>
+
+                <div id="planResult" class="plan-result">
+                    <h3 id="planTitle"></h3>
+                    <div id="planContent" class="plan-content-html"></div>
+                </div>
+            </div>
+
+            <div class="history-section glass-card">
+                <h3>Past Study Plans</h3>
+                <div id="historyContainer">
+                    <p style="opacity: 0.7;">Loading history...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include marked.js for fast markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="/static/js/app.js?v=1.2"></script>
+    <script src="/static/js/study.js"></script>
+</body>
+</html>

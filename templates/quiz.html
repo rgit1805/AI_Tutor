@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Tutor - Quiz</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        /* HF source toggle buttons */
+        .source-toggle {
+            display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1.2rem;
+        }
+        .source-btn {
+            padding: 0.45rem 1.1rem; border-radius: 20px; font-size: 0.85rem;
+            font-weight: 600; cursor: pointer; border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7);
+            transition: all 0.2s;
+        }
+        .source-btn.active {
+            background: linear-gradient(135deg,#3a7bd5,#00d2ff);
+            border-color: transparent; color: #fff;
+        }
+        .source-btn:hover:not(.active) { background: rgba(255,255,255,0.12); }
+
+        /* HF Feature 5: answer validation */
+        .validate-area {
+            margin-top: 1rem; padding: 1rem;
+            background: rgba(0,210,255,0.06);
+            border: 1px solid rgba(0,210,255,0.2); border-radius: 12px;
+        }
+        .validate-area label { font-size: 0.85rem; opacity: 0.8; display: block; margin-bottom: 0.4rem; }
+        .validate-area input {
+            width: 100%; padding: 0.6rem 1rem; border-radius: 10px; margin-bottom: 0.6rem;
+            font-size: 0.9rem; box-sizing: border-box;
+        }
+        .validate-area button {
+            padding: 0.5rem 1.2rem; border-radius: 10px; font-size: 0.85rem;
+        }
+        #validateResult {
+            margin-top: 0.6rem; font-size: 0.88rem; min-height: 1.4rem;
+        }
+        .valid-correct   { color: #48c774; font-weight: 600; }
+        .valid-incorrect { color: #ff6363; font-weight: 600; }
+    </style>
+</head>
+
+<body>
+    <nav>
+        <a href="/">Dashboard</a>
+        <a href="/quiz">Start Quiz</a>
+        <a href="/chat">Chat</a>
+        <a href="/study">Study Plan</a>
+        <a href="/progress">Progress</a>
+    </nav>
+
+    <div class="container">
+        <div id="quizSection" class="glass-card">
+            <h2 id="quizTitle">Knowledge Check</h2>
+
+            <!-- HF Feature 1: Question source selector -->
+            <div class="source-toggle" id="sourceToggle">
+                <button class="source-btn active" data-source="db"   onclick="setSource('db',   this)">📚 Database</button>
+                <button class="source-btn"         data-source="ai"   onclick="setSource('ai',   this)">🤖 Gemini AI</button>
+                <button class="source-btn"         data-source="hf"   onclick="setSource('hf',   this)">🤗 HF Questions</button>
+            </div>
+
+            <div id="questionContainer">
+                <p id="questionText" style="font-size:1.2rem;margin-bottom:1.5rem;"></p>
+                <div id="optionsContainer" style="display:flex;flex-direction:column;gap:1rem;"></div>
+
+                <!-- HF Feature 5: Free-text answer validation -->
+                <div class="validate-area" id="validateArea" style="display:none;">
+                    <label>🤗 Validate your own answer (free text):</label>
+                    <input type="text" id="freeAnswerInput" placeholder="Type your answer…">
+                    <button onclick="validateFreeAnswer()">Check Answer</button>
+                    <div id="validateResult"></div>
+                </div>
+            </div>
+
+            <div id="resultContainer" style="display:none;text-align:center;">
+                <h3>Quiz Completed!</h3>
+                <div class="glass-card" style="background:rgba(0,0,0,0.2);">
+                    <p style="font-size:2rem;font-weight:bold;margin:1rem 0;">Score: <span id="finalScore">0</span>%</p>
+                    <p>Level: <span id="performanceLevel">-</span></p>
+                    <p>Recommendation: <span id="recommendationText">-</span></p>
+                    <p>Points Earned: +<span id="pointsEarned">0</span></p>
+                </div>
+                <button onclick="location.href='/'">Go to Dashboard</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load official app.js first -->
+    <script src="/static/js/app.js?v=1.1"></script>
+
+    <!-- Overlay HF logic -->
+    <script>
+    (function() {
+        // ── Quiz source state ───────────────────────────────────────────
+        window.currentSource = 'db';  // Global so radio buttons see it
+
+        window.setSource = function(src, btn) {
+            window.currentSource = src;
+            document.querySelectorAll('.source-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Show validate area only for HF mode (Feature 5)
+            const vArea = document.getElementById('validateArea');
+            if (vArea) vArea.style.display = src === 'hf' ? 'block' : 'none';
+        };
+
+        // ── Patch: intercept initQuiz to support HF source ────────────────
+        const _origInitQuiz = window.initQuiz;
+        if (!_origInitQuiz) {
+            console.error("HF Overlay: Could not find original initQuiz in app.js");
+        }
+
+        window.initQuiz = async function(subject, difficulty, useAI, count) {
+            if (window.currentSource !== 'hf') {
+                // If the user selected AI from the source toggles, force useAI true
+                const finalAI = useAI || (window.currentSource === 'ai');
+                return _origInitQuiz(subject, difficulty, finalAI, count);
+            }
+
+            // HF SOURCE LOGIC
+            try {
+                const titleEl = document.getElementById('quizTitle');
+                if (titleEl) titleEl.innerText = `${subject} (🤗 HuggingFace Powered) (${difficulty})`;
+
+                const res = await fetch('/hf/generate-questions', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ subject, difficulty, count: parseInt(count) })
+                });
+
+                if (!res.ok) throw new Error("HF Question generation unavailable");
+
+                const qs = await res.json();
+                // Assign to global currentQuestions (the one in app.js)
+                window.currentQuestions = qs;
+                window.currentIdx = 0;
+                window.score = 0;
+                window.quizSubject = subject;
+
+                if (window.showQuestion) {
+                    window.showQuestion();
+                } else {
+                    console.error("HF Overlay: showQuestion not found");
+                }
+            } catch (err) {
+                console.error("HF Quiz Error:", err);
+                alert("HF Quiz failed. Falling back to Database.");
+                return _origInitQuiz(subject, difficulty, false, count);
+            }
+        };
+
+        // ── HF Feature 5: Free-text answer validation ───────────────────
+        window.validateFreeAnswer = async function() {
+            const answer = document.getElementById('freeAnswerInput').value.trim();
+            const resultEl = document.getElementById('validateResult');
+            // Access currentQuestionText from app.js state
+            const currentQ = window.currentQuestions[window.currentIdx];
+
+            if (!answer) { resultEl.textContent = 'Please type an answer first.'; return; }
+            if (!currentQ) { resultEl.textContent = 'Load a question first.'; return; }
+
+            resultEl.textContent = '⏳ Checking with RoBERTa…';
+            resultEl.className = '';
+
+            try {
+                const res = await fetch('/hf/validate-answer', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        question: currentQ.text,
+                        context: `The topic is ${window.quizSubject}. Question: ${currentQ.text}. Selected option: ${answer}`,
+                        answer: answer
+                    })
+                });
+                const data = await res.json();
+                if (data.is_correct) {
+                    resultEl.innerHTML = `✅ Correct! (confidence: ${(data.confidence * 100).toFixed(0)}%)`;
+                    resultEl.className = 'valid-correct';
+                } else {
+                    resultEl.innerHTML = `❌ Not quite. Expected similar to: <em>${data.expected_answer}</em>`;
+                    resultEl.className = 'valid-incorrect';
+                }
+            } catch (e) {
+                resultEl.textContent = 'Validation service unavailable.';
+            }
+        };
+    })();
+    </script>
+</body>
+
+</html>

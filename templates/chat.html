@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Tutor - Chat</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        html, body { height: 100%; overflow: hidden; }
+
+        .chat-page-wrapper {
+            display: flex; flex-direction: column; height: 100vh; width: 100%;
+        }
+        .chat-main {
+            flex: 1; display: flex; flex-direction: column; overflow: hidden;
+            padding: 1.2rem 1.5rem 1rem;
+            max-width: 860px; width: 100%; margin: 0 auto; box-sizing: border-box;
+        }
+        .chat-header { flex-shrink: 0; padding-bottom: 0.6rem; }
+        .chat-header h2 { margin: 0 0 0.2rem; font-size: 1.7rem; }
+        .chat-header p  { margin: 0; opacity: 0.7; font-size: 0.95rem; }
+
+        #chatBox {
+            flex: 1; overflow-y: auto; display: flex; flex-direction: column;
+            gap: 0.9rem; padding: 1rem 1.2rem; margin: 0.9rem 0 0;
+            background: rgba(0,0,0,0.25);
+            border: 1px solid rgba(255,255,255,0.08); border-radius: 18px;
+            scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent;
+        }
+        #chatBox::-webkit-scrollbar { width: 5px; }
+        #chatBox::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+
+        .message-wrapper { display: flex; flex-direction: column; gap: 0.3rem; }
+        .message-wrapper.user-wrapper { align-items: flex-end; }
+        .message-wrapper.ai-wrapper   { align-items: flex-start; }
+
+        .message {
+            max-width: 78%; padding: 0.8rem 1.2rem; border-radius: 18px;
+            font-size: 0.97rem; line-height: 1.65;
+            word-spacing: 0.02em; letter-spacing: 0.01em;
+            white-space: normal; word-break: break-word;
+            animation: slideUp 0.25s ease-out;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .user-message {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #3a7bd5, #00d2ff);
+            color: white; border-bottom-right-radius: 5px;
+        }
+        .ai-message {
+            align-self: flex-start;
+            background: rgba(255,255,255,0.09);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-bottom-left-radius: 5px; color: rgba(255,255,255,0.92);
+        }
+        .ai-message strong { color: #00d2ff; }
+        .ai-message em     { color: rgba(255,255,255,0.8); font-style: italic; }
+        .ai-message code {
+            background: rgba(0,0,0,0.3); padding: 0.15em 0.4em;
+            border-radius: 4px; font-family: 'Courier New', monospace; font-size: 0.9em;
+        }
+
+        /* HF Feature 3: Topic chip below user message */
+        .topic-chip {
+            font-size: 0.72rem; padding: 0.22em 0.7em;
+            border-radius: 20px; font-weight: 600; letter-spacing: 0.04em;
+            background: rgba(0,210,255,0.15);
+            border: 1px solid rgba(0,210,255,0.3); color: #00d2ff;
+            animation: fadeIn 0.3s ease-out; cursor: default;
+        }
+
+        /* HF Feature 2: Sentiment badge below AI message */
+        .sentiment-badge {
+            font-size: 0.72rem; padding: 0.22em 0.7em;
+            border-radius: 20px; font-weight: 600;
+            border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.7);
+            animation: fadeIn 0.35s ease-out;
+        }
+        .sentiment-badge.positive { border-color: rgba(72,199,116,0.4); color: #48c774; background: rgba(72,199,116,0.1); }
+        .sentiment-badge.negative { border-color: rgba(255,99,99,0.4);  color: #ff6363; background: rgba(255,99,99,0.1); }
+        .sentiment-badge.neutral  { border-color: rgba(255,213,0,0.4);  color: #ffd500; background: rgba(255,213,0,0.1); }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .chat-input-area {
+            flex-shrink: 0; display: flex; gap: 0.8rem;
+            padding: 0.9rem 0 0.4rem; align-items: center;
+        }
+        .chat-input-area input {
+            flex: 1; margin: 0; padding: 0.85rem 1.2rem;
+            border-radius: 14px; font-size: 0.97rem;
+        }
+        .chat-input-area button {
+            flex-shrink: 0; padding: 0.85rem 1.6rem;
+            border-radius: 14px; font-size: 0.95rem; white-space: nowrap;
+        }
+
+        .mic-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%; width: 45px; height: 45px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; cursor: pointer; transition: all 0.2s; padding: 0 !important;
+        }
+        .mic-btn:hover { background: rgba(255, 255, 255, 0.15); }
+        .mic-btn.listening {
+            background: #ff4b2b; border-color: #ff4b2b; color: white;
+            animation: pulse-mic 1.5s infinite;
+        }
+        @keyframes pulse-mic {
+            0% { box-shadow: 0 0 0 0 rgba(255, 75, 43, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(255, 75, 43, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 75, 43, 0); }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="chat-page-wrapper">
+        <nav>
+            <a href="/">Dashboard</a>
+            <a href="/quiz">Quiz</a>
+            <a href="/chat">Chat</a>
+            <a href="/study">Study Plan</a>
+            <a href="/progress">Progress</a>
+        </nav>
+
+        <div class="chat-main">
+            <div class="chat-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h2>✧ Nexus AI</h2>
+                    <p>Seamlessly connect with knowledge. Ask your questions here.</p>
+                </div>
+                <button id="cheatSheetBtn" style="padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.9rem; background: linear-gradient(135deg, #3a7bd5, #00d2ff); color: white; border: none; cursor: pointer;">📄 Generate Cheat Sheet</button>
+            </div>
+
+            <div id="chatBox">
+                <!-- Messages will be loaded here dynamically -->
+            </div>
+
+            <div class="chat-input-area">
+                <button id="micBtn" class="mic-btn" title="Voice Input">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="22"/>
+                        <line x1="8" y1="22" x2="16" y2="22"/>
+                    </svg>
+                </button>
+                <input type="text" id="chatInput" placeholder="Type your question here…" autocomplete="off">
+                <button id="sendBtn">Ask AI ✦</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        const chatBox   = document.getElementById('chatBox');
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn   = document.getElementById('sendBtn');
+        const micBtn    = document.getElementById('micBtn');
+        const cheatSheetBtn = document.getElementById('cheatSheetBtn');
+
+        let student = null;
+        try {
+            student = JSON.parse(localStorage.getItem('student'));
+        } catch (e) {}
+
+        if (!student) {
+            window.location.href = '/login';
+            return;
+        }
+
+        cheatSheetBtn.addEventListener('click', () => {
+            window.open(`/chat_api/cheat-sheet/${student.student_id}`, '_blank');
+        });
+
+        // --- Voice Input Logic ---
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRec();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+
+            let baseTranscript = '';
+
+            recognition.onstart = () => {
+                micBtn.classList.add('listening');
+                chatInput.placeholder = "Listening... Speak now";
+                baseTranscript = chatInput.value ? chatInput.value + ' ' : '';
+            };
+
+            recognition.onresult = (e) => {
+                let interim = '';
+                let finalSegment = '';
+                for (let i = e.resultIndex; i < e.results.length; i++) {
+                    if (e.results[i].isFinal) {
+                        finalSegment += e.results[i][0].transcript;
+                    } else {
+                        interim += e.results[i][0].transcript;
+                    }
+                }
+                if (finalSegment) baseTranscript += finalSegment + ' ';
+                chatInput.value = baseTranscript + interim;
+            };
+
+            recognition.onerror = (e) => {
+                console.error('Speech recognition error:', e.error);
+                micBtn.classList.remove('listening');
+                chatInput.placeholder = "Type your question here…";
+            };
+
+            recognition.onend = () => {
+                micBtn.classList.remove('listening');
+                chatInput.placeholder = "Type your question here…";
+            };
+
+            micBtn.addEventListener('click', () => {
+                if (micBtn.classList.contains('listening')) {
+                    recognition.stop();
+                } else {
+                    recognition.start();
+                }
+            });
+        } else {
+            micBtn.style.display = 'none'; // Hide if browser doesn't support Web Speech API
+        }
+        // -------------------------
+
+        function renderMarkdown(text) {
+            if (!text) return '';
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g,     '<em>$1</em>')
+                .replace(/`(.*?)`/g,       '<code>$1</code>')
+                .replace(/\n/g,            '<br>');
+        }
+
+        function appendMessage(html, type, extras) {
+            const wrapper = document.createElement('div');
+            wrapper.className = `message-wrapper ${type === 'user' ? 'user-wrapper' : 'ai-wrapper'}`;
+            const bubble = document.createElement('div');
+            bubble.className = `message ${type === 'user' ? 'user-message' : 'ai-message'}`;
+            bubble.innerHTML = html;
+            wrapper.appendChild(bubble);
+            if (extras) {
+                const tag = document.createElement('span');
+                tag.className = extras.cls;
+                tag.textContent = extras.text;
+                if (extras.title) tag.title = extras.title;
+                wrapper.appendChild(tag);
+            }
+            chatBox.appendChild(wrapper);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return wrapper;
+        }
+
+        async function sendMessage() {
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            // User bubble
+            const userWrapper = appendMessage(text, 'user', null);
+            const topicEl = document.createElement('span');
+            topicEl.className = 'topic-chip';
+            topicEl.textContent = '🔍 detecting…';
+            userWrapper.appendChild(topicEl);
+
+            chatInput.value = '';
+            sendBtn.disabled = true;
+            sendBtn.textContent = '…';
+
+            // Loading bubble
+            const loadWrapper = appendMessage('<em style="opacity:0.5">Thinking…</em>', 'ai', null);
+
+            try {
+                const res  = await fetch('/chat_api/ask', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ student_id: student.student_id, message: text })
+                });
+                const data = await res.json();
+
+                chatBox.removeChild(loadWrapper);
+
+                // Update topic chip (Feature 3)
+                if (data.topic && data.topic.subject && data.topic.subject !== 'General') {
+                    topicEl.textContent = `📚 ${data.topic.subject}`;
+                    const pct = data.topic.confidence ? `${(data.topic.confidence * 100).toFixed(0)}% confident` : '';
+                    if (pct) topicEl.title = pct;
+                } else {
+                    topicEl.remove();
+                }
+
+                // Sentiment badge (Feature 2)
+                let sentimentExtras = null;
+                if (data.sentiment && data.sentiment.label) {
+                    const s = data.sentiment;
+                    sentimentExtras = {
+                        cls: `sentiment-badge ${s.label.toLowerCase()}`,
+                        text: `${s.emoji || ''} ${s.label}`,
+                        title: `Score: ${(s.score * 100).toFixed(1)}%`
+                    };
+                }
+
+                appendMessage(renderMarkdown(data.reply || ''), 'ai', sentimentExtras);
+
+            } catch(e) {
+                chatBox.removeChild(loadWrapper);
+                appendMessage('Sorry, something went wrong. Please try again.', 'ai', null);
+            }
+
+            sendBtn.disabled = false;
+            sendBtn.textContent = 'Ask AI ✦';
+            chatInput.focus();
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
+
+        // Load chat history
+        async function loadHistory() {
+            try {
+                const res = await fetch(`/chat_api/history/${student.student_id}`);
+                const history = await res.json();
+                
+                if (history.length === 0) {
+                    appendMessage("Hello! I'm your AI Tutor. What would you like to learn today?", 'ai', null);
+                } else {
+                    history.forEach(msg => {
+                        appendMessage(renderMarkdown(msg.content), msg.role, null);
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to load history", e);
+                appendMessage("Hello! I'm your AI Tutor. What would you like to learn today?", 'ai', null);
+            }
+        }
+        
+        loadHistory();
+    })();
+    </script>
+</body>
+</html>
