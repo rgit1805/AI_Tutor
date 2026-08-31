@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 import models
 from pydantic import BaseModel
+from security import hash_password, verify_password
 
 router = APIRouter()
 
@@ -28,7 +29,7 @@ async def register(auth: UserRegister, db: Session = Depends(get_db)):
         name=auth.name,
         username=auth.username,
         email=auth.email,
-        password=auth.password # Use hashing in production
+        password=hash_password(auth.password)
     )
     db.add(new_student)
     db.commit()
@@ -41,7 +42,10 @@ async def login(auth: UserLogin, db: Session = Depends(get_db)):
         (models.Student.username == auth.username_or_email) | (models.Student.email == auth.username_or_email)
     ).first()
     
-    if not db_student or db_student.password != auth.password:
+    if not db_student or not verify_password(
+    auth.password,
+    db_student.password
+):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     return {"message": "Login successful", "student_id": db_student.id, "name": db_student.name}
