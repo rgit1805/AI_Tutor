@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 import models
 from pydantic import BaseModel
-from security import hash_password, verify_password
+from security import create_access_token, hash_password, verify_password
 from pwdlib.exceptions import UnknownHashError
 
 router = APIRouter()
@@ -33,12 +33,16 @@ async def register(auth: UserRegister, db: Session = Depends(get_db)):
         name=auth.name,
         username=auth.username,
         email=auth.email,
-        password=hash_password(auth.password)
+        password=hash_password(auth.password),
     )
     db.add(new_student)
     db.commit()
     db.refresh(new_student)
-    return {"message": "Registration successful", "student_id": new_student.id, "name": new_student.name}
+    return {
+        "message": "Registration successful",
+        "student_id": new_student.id,
+        "name": new_student.name,
+    }
 
 
 @router.post("/login")
@@ -53,10 +57,17 @@ async def login(auth: UserLogin, db: Session = Depends(get_db)):
     try:
         password_valid = verify_password(auth.password, db_student.password)
     except UnknownHashError:
-        # Existing accounts created before password hashing are not valid for the new auth flow.
         password_valid = False
 
     if not password_valid:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    return {"message": "Login successful", "student_id": db_student.id, "name": db_student.name}
+    access_token = create_access_token(db_student.id)
+
+    return {
+        "message": "Login successful",
+        "access_token": access_token,
+        "token_type": "bearer",
+        "student_id": db_student.id,
+        "name": db_student.name,
+    }
